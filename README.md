@@ -11,6 +11,7 @@
 [![Kali](https://img.shields.io/badge/platform-Kali%20Linux-557C94?logo=kalilinux&logoColor=white)](https://www.kali.org/)
 [![Idempotent](https://img.shields.io/badge/idempotent-yes-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/azoz8/kali-system-setup?color=blue&label=إصدار)](https://github.com/azoz8/kali-system-setup/releases) [![Last Commit](https://img.shields.io/github/last-commit/azoz8/kali-system-setup?color=green)](https://github.com/azoz8/kali-system-setup/commits/main)
 
 </div>
 
@@ -33,7 +34,7 @@
 
 ```bash
 # نزّل وفك الضغط
-wget https://github.com/azoz8/kali-system-setup/raw/main/system-setup.tar.xz
+wget https://github.com/azoz8/kali-system-setup/releases/download/v1.0.0/system-setup.tar.xz
 tar -xf system-setup.tar.xz
 cd system-setup
 
