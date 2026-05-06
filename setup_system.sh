@@ -20,7 +20,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-ACTUAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "aziz84")}
+ACTUAL_USER=${SUDO_USER:-$(logname 2>/dev/null || whoami)}
 ACTUAL_HOME=$(getent passwd "$ACTUAL_USER" | cut -d: -f6)
 
 echo ""
@@ -251,7 +251,7 @@ log "تم إضافة aliases"
 info "تحسين إعدادات النظام..."
 
 # زيادة حد الـ file descriptors
-if ! grep -q "aziz84.*nofile" /etc/security/limits.conf; then
+if ! grep -q "^\* soft nofile" /etc/security/limits.conf; then
     cat >> /etc/security/limits.conf << 'LIMITS'
 * soft nofile 65536
 * hard nofile 65536
