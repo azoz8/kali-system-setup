@@ -252,6 +252,6 @@ dex   # docker exec -it
 
 <div align="center">
 
-**صُنع بـ ❤️ لمجتمع Kali Linux**
+**صُنع بـ ❤️ لمجتمع أسس **
 
 </div>
