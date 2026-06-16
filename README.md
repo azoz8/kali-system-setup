@@ -234,7 +234,6 @@ dex   # docker exec -it
 ```
 .
 ├── setup_system.sh       # السكريبت القابل للتشغيل
-├── system-setup.tar.xz   # حزمة جاهزة (سكريبت + README + كود مصدري)
 ├── README.md             # هذا الملف
 └── LICENSE               # رخصة MIT
 ```
