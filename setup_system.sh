@@ -159,11 +159,11 @@ usermod -aG docker "$ACTUAL_USER" || warn "تعذّر إضافة $ACTUAL_USER إ
 # ─── 6. Git Configuration ─────────────────────────
 info "إعداد Git..."
 if [ ! -f "$ACTUAL_HOME/.gitconfig" ]; then
-    sudo -u "$ACTUAL_USER" git config --global core.editor "vim"
-    sudo -u "$ACTUAL_USER" git config --global color.ui true
-    sudo -u "$ACTUAL_USER" git config --global pull.rebase false
-    sudo -u "$ACTUAL_USER" git config --global init.defaultBranch main
-    sudo -u "$ACTUAL_USER" git config --global core.autocrlf input
+    sudo -u "$ACTUAL_USER" -H git config --global core.editor "vim"
+    sudo -u "$ACTUAL_USER" -H git config --global color.ui true
+    sudo -u "$ACTUAL_USER" -H git config --global pull.rebase false
+    sudo -u "$ACTUAL_USER" -H git config --global init.defaultBranch main
+    sudo -u "$ACTUAL_USER" -H git config --global core.autocrlf input
     log "تم إعداد Git الأساسي"
 fi
 
@@ -171,12 +171,21 @@ fi
 info "تثبيت Zsh..."
 install_available zsh
 if [ ! -d "$ACTUAL_HOME/.oh-my-zsh" ]; then
-    sudo -u "$ACTUAL_USER" sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>/dev/null
-    log "تم تثبيت Oh My Zsh"
-    # تغيير الثيم
-    sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' "$ACTUAL_HOME/.zshrc" 2>/dev/null || true
+    # -H إلزامي: بدونه يبقى HOME=/root فيُركَّب Oh My Zsh في مجلد root
+    sudo -u "$ACTUAL_USER" -H env RUNZSH=no CHSH=no \
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended ||
+        warn "تعذّر تشغيل مثبّت Oh My Zsh"
 else
     log "Oh My Zsh مثبت مسبقاً"
+fi
+
+# نتحقق من نتيجة التثبيت فعلياً قبل أي تعديل على .zshrc بدل ابتلاع الفشل
+if [ -d "$ACTUAL_HOME/.oh-my-zsh" ] && [ -f "$ACTUAL_HOME/.zshrc" ]; then
+    # تغيير الثيم
+    sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' "$ACTUAL_HOME/.zshrc"
+    log "تم إعداد Oh My Zsh والثيم"
+else
+    error "Oh My Zsh غير موجود في $ACTUAL_HOME — تخطّي تخصيص .zshrc"
 fi
 
 # إضافة plugins مفيدة
@@ -184,12 +193,12 @@ if [ -f "$ACTUAL_HOME/.zshrc" ]; then
     if ! grep -q "zsh-autosuggestions" "$ACTUAL_HOME/.zshrc"; then
         # تثبيت zsh-autosuggestions
         ZSH_CUSTOM="$ACTUAL_HOME/.oh-my-zsh/custom"
-        sudo -u "$ACTUAL_USER" git clone https://github.com/zsh-users/zsh-autosuggestions \
-            "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" 2>/dev/null || true
-        sudo -u "$ACTUAL_USER" git clone https://github.com/zsh-users/zsh-syntax-highlighting \
-            "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" 2>/dev/null || true
+        sudo -u "$ACTUAL_USER" -H git clone https://github.com/zsh-users/zsh-autosuggestions \
+            "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" || warn "تعذّر استنساخ zsh-autosuggestions"
+        sudo -u "$ACTUAL_USER" -H git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+            "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" || warn "تعذّر استنساخ zsh-syntax-highlighting"
         sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting history sudo)/' \
-            "$ACTUAL_HOME/.zshrc" 2>/dev/null || true
+            "$ACTUAL_HOME/.zshrc"
         log "تم تثبيت Zsh plugins"
     fi
 fi
