@@ -23,7 +23,9 @@
 - 🔁 **قابل لإعادة التشغيل** — شغّله مرات متعددة بدون أعراض جانبية
 - 👤 **يتكيّف مع المستخدم الحالي** تلقائياً (لا أسماء مستخدمين مكوّدة)
 - 🎨 **مخرجات ملوّنة** ومنسّقة لمتابعة التقدم بوضوح
-- 🐍 **متوافق مع PEP 668** — يستخدم apt و pipx لتجنب تعارضات بيئة Kali
+- 🐍 **متوافق مع PEP 668** — المكتبات من `apt` والتطبيقات عبر `pipx`، بلا `--break-system-packages`
+- 🛡️ **يفشل بصوت عالٍ** — `set -Eeuo pipefail` مع `trap` يطبع رقم السطر، وسجل كامل في `/var/log/kali-setup-*.log`
+- 📦 **تثبيت مرن** — يفحص توفر كل حزمة قبل التثبيت ويسمّي المفقود بدل أن يفشل كاملاً
 - ⚡ **شامل** — من الأدوات الأساسية حتى تحسينات نواة الشبكة
 
 ---
@@ -52,6 +54,16 @@ sudo bash setup_system.sh
 
 > ⚠️ **مهم:** يحتاج السكريبت صلاحيات `root`. سيخرج فوراً إن لم يُشغَّل بـ `sudo`.
 
+### الخيارات
+
+```bash
+bash setup_system.sh --version   # رقم الإصدار (لا يحتاج root)
+bash setup_system.sh --help      # المساعدة
+```
+
+يُكتب سجل كامل لكل تشغيل في `/var/log/kali-setup-<التاريخ>.log`
+(أو `/tmp` إن تعذّرت الكتابة في `/var/log`).
+
 ---
 
 ## 📦 ما الذي يثبّته السكريبت؟
@@ -69,7 +81,7 @@ sudo bash setup_system.sh
 - `ripgrep` `bat` `fd-find` — بدائل عصرية
 - `nmap` `net-tools` — أدوات الشبكة
 - `unzip` `zip` `p7zip` — ضغط الملفات
-- `tldr` `neofetch` `locate`
+- `tealdeer` (الأمر `tldr`) `fastfetch` `plocate`
 
 </td>
 <td width="50%" valign="top">
@@ -78,9 +90,9 @@ sudo bash setup_system.sh
 - `python3-venv` `python3-dev`
 - `ipython3` — طرفية تفاعلية
 - `pipx` — لتطبيقات Python معزولة
-- حزم: `requests` `httpx` `rich`
-- `black` `flake8` — تنسيق وفحص
-- `jupyter` `pandas` `numpy`
+- مكتبات من apt: `python3-requests` `python3-httpx`
+  `python3-rich` `python3-typer` `python3-pandas` `python3-numpy`
+- تطبيقات عبر pipx: `black` `flake8` `jupyterlab` `httpie`
 
 ### 🟢 Node.js
 - آخر إصدار **LTS** عبر NodeSource الرسمي
@@ -119,16 +131,22 @@ sudo bash setup_system.sh
 
 ## ⚡ تحسينات الأداء
 
-### `/etc/security/limits.conf`
+### `/etc/security/limits.d/99-custom.conf`
 | الإعداد | القيمة | الفائدة |
 |---------|--------|---------|
 | `nofile` | **65,536** | رفع حد الملفات المفتوحة |
 | `nproc` | **32,768** | رفع حد العمليات |
 
+تُطبَّق على `*` و على `root` صراحةً (الرمز `*` لا يشمل root).
+وللخدمات، يُكتب `/etc/systemd/system.conf.d/99-limits.conf` بـ `DefaultLimitNOFILE=65536`
+لأن `pam_limits` لا يطال وحدات systemd.
+
 ### `/etc/sysctl.d/99-custom.conf`
 | المعامل | القيمة | الغرض |
 |---------|--------|-------|
 | `net.core.somaxconn` | `65535` | زيادة طابور اتصالات الشبكة |
+| `net.ipv4.tcp_max_syn_backlog` | `65535` | استيعاب دفعات اتصالات أكبر |
+| `net.ipv4.ip_local_port_range` | `32768 60999` | مدى المنافذ المؤقتة — لا ينزل تحت 32768 حتى لا تُحجز منافذ خدمات مثل 3306 و 5432 و 8080 |
 | `net.ipv4.tcp_fin_timeout` | `15` | تسريع إغلاق الاتصالات |
 | `vm.swappiness` | `10` | تفضيل RAM على Swap |
 | `vm.dirty_ratio` | `15` | تحسين أداء الكتابة |
@@ -137,7 +155,10 @@ sudo bash setup_system.sh
 
 ## 🎯 الاختصارات (Aliases)
 
-يضيف السكريبت ملف `~/.bash_aliases` (يُحمَّل في bash و zsh) يحتوي على اختصارات منظّمة:
+يضيف السكريبت ملف `~/.config/shell/aliases.sh` (يُحمَّل في bash و zsh) يحتوي على اختصارات منظّمة.
+
+> ℹ️ حتى الإصدار v1.0.0 كان المسار `~/.bash_aliases`. لم يعد السكريبت يكتب فوقه —
+> إن كان لديك ملف قديم فسيبقى كما هو، ويمكنك نقل ما أضفته إليه يدوياً.
 
 <details>
 <summary><b>🔄 النظام</b></summary>
@@ -233,8 +254,12 @@ dex   # docker exec -it
 
 ```
 .
+├── .github/
+│   └── workflows/
+│       └── ci.yml        # shellcheck + اختبار تشغيل داخل حاوية Kali
 ├── setup_system.sh       # السكريبت القابل للتشغيل
 ├── README.md             # هذا الملف
+├── CHANGELOG.md          # سجل التغييرات
 └── LICENSE               # رخصة MIT
 ```
 
