@@ -118,12 +118,13 @@ log "تم ترقية الحزم"
 # ─── 2. الأدوات الأساسية ──────────────────────────
 info "تثبيت الأدوات الأساسية..."
 # fastfetch بدل neofetch (المشروع مؤرشف وأُزيل من مستودعات Debian/Kali)
-# plocate بدل locate، و sudo لأن السكريبت يعتمد عليه في إعدادات المستخدم
+# plocate بدل locate، tealdeer بدل tldr (غير موجود في مستودعات Kali، و tealdeer
+# يوفّر الأمر tldr نفسه)، و sudo لأن السكريبت يعتمد عليه في إعدادات المستخدم
 CORE_PKGS=(build-essential curl wget git vim nano htop btop tree unzip zip
            p7zip-full net-tools dnsutils whois traceroute nmap tcpdump openssl
            ca-certificates apt-transport-https gnupg lsb-release jq tmux screen
-           fastfetch plocate bash-completion man-db tldr bat fd-find ripgrep fzf
-           sudo)
+           fastfetch plocate bash-completion man-db tealdeer bat fd-find ripgrep
+           fzf sudo)
 install_available "${CORE_PKGS[@]}"
 
 log "تم تثبيت الأدوات الأساسية"
