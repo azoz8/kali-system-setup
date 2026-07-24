@@ -161,14 +161,19 @@ usermod -aG docker "$ACTUAL_USER" || warn "تعذّر إضافة $ACTUAL_USER إ
 
 # ─── 6. Git Configuration ─────────────────────────
 info "إعداد Git..."
-if [ ! -f "$ACTUAL_HOME/.gitconfig" ]; then
-    sudo -u "$ACTUAL_USER" -H git config --global core.editor "vim"
-    sudo -u "$ACTUAL_USER" -H git config --global color.ui true
-    sudo -u "$ACTUAL_USER" -H git config --global pull.rebase false
-    sudo -u "$ACTUAL_USER" -H git config --global init.defaultBranch main
-    sudo -u "$ACTUAL_USER" -H git config --global core.autocrlf input
-    log "تم إعداد Git الأساسي"
-fi
+# لكل مفتاح على حدة: الشرط القديم (غياب .gitconfig كلياً) كان يحرم أي مستخدم
+# لديه ملف مسبق من كل الإعدادات. ولا ندهس قيمة ضبطها المستخدم بنفسه.
+git_set_if_unset() {
+    sudo -u "$ACTUAL_USER" -H git config --global --get "$1" &>/dev/null ||
+        sudo -u "$ACTUAL_USER" -H git config --global "$1" "$2"
+}
+
+git_set_if_unset core.editor "vim"
+git_set_if_unset color.ui true
+git_set_if_unset pull.rebase false
+git_set_if_unset init.defaultBranch main
+git_set_if_unset core.autocrlf input
+log "تم إعداد Git الأساسي"
 
 # ─── 7. Zsh + Oh My Zsh ──────────────────────────
 info "تثبيت Zsh..."
@@ -208,7 +213,11 @@ fi
 
 # ─── 8. Aliases مفيدة ─────────────────────────────
 info "إضافة aliases مفيدة..."
-ALIASES_FILE="$ACTUAL_HOME/.bash_aliases"
+# ملف مملوك للسكريبت: آمن للكتابة فوقه في كل تشغيل، بخلاف ~/.bash_aliases
+# الذي قد يحتوي إضافات المستخدم
+ALIASES_DIR="$ACTUAL_HOME/.config/shell"
+ALIASES_FILE="$ALIASES_DIR/aliases.sh"
+mkdir -p "$ALIASES_DIR"
 cat > "$ALIASES_FILE" << 'ALIASES'
 # System
 alias update='sudo apt update && sudo apt upgrade -y'
@@ -260,6 +269,10 @@ alias dpa='docker ps -a'
 alias di='docker images'
 alias dex='docker exec -it'
 
+# Modern replacements — أسماء الثنائيات في Debian/Kali تختلف عن اسم الأمر الأصلي
+alias bat='batcat'
+alias fd='fdfind'
+
 # Useful
 alias h='history | grep'
 alias path='echo $PATH | tr ":" "\n"'
@@ -270,16 +283,19 @@ alias meminfo='free -h'
 alias cpuinfo='lscpu | head -20'
 ALIASES
 
-chown "$ACTUAL_USER:$ACTUAL_GROUP" "$ALIASES_FILE"
+chown "$ACTUAL_USER:$ACTUAL_GROUP" "$ACTUAL_HOME/.config" "$ALIASES_DIR" "$ALIASES_FILE"
 
-# تأكد من تحميل aliases في bashrc
-if [ -f "$ACTUAL_HOME/.bashrc" ] && ! grep -q ".bash_aliases" "$ACTUAL_HOME/.bashrc"; then
-    echo -e '\n# Load custom aliases\n[ -f ~/.bash_aliases ] && . ~/.bash_aliases' >> "$ACTUAL_HOME/.bashrc"
-fi
+# تحميل الملف من bashrc و zshrc
+ALIASES_SOURCE_LINE='[ -f ~/.config/shell/aliases.sh ] && . ~/.config/shell/aliases.sh'
+for rc in "$ACTUAL_HOME/.bashrc" "$ACTUAL_HOME/.zshrc"; do
+    if [ -f "$rc" ] && ! grep -qF '.config/shell/aliases.sh' "$rc"; then
+        printf '\n# Load custom aliases\n%s\n' "$ALIASES_SOURCE_LINE" >> "$rc"
+    fi
+done
 
-# إضافة لـ zshrc أيضاً
-if [ -f "$ACTUAL_HOME/.zshrc" ] && ! grep -q ".bash_aliases" "$ACTUAL_HOME/.zshrc"; then
-    echo -e '\n# Load custom aliases\n[ -f ~/.bash_aliases ] && . ~/.bash_aliases' >> "$ACTUAL_HOME/.zshrc"
+# ملف الإصدارات السابقة يُترك كما هو — قد يحتوي إضافات المستخدم
+if [ -f "$ACTUAL_HOME/.bash_aliases" ]; then
+    info "الموقع الجديد للـ aliases هو ~/.config/shell/aliases.sh — تُرك ~/.bash_aliases القديم كما هو"
 fi
 
 log "تم إضافة aliases"
@@ -287,15 +303,25 @@ log "تم إضافة aliases"
 # ─── 9. تحسين الأداء ─────────────────────────────
 info "تحسين إعدادات النظام..."
 
-# زيادة حد الـ file descriptors
-if ! grep -q "^\* soft nofile" /etc/security/limits.conf; then
-    cat >> /etc/security/limits.conf << 'LIMITS'
-* soft nofile 65536
-* hard nofile 65536
-* soft nproc 32768
-* hard nproc 32768
+# زيادة حد الـ file descriptors عبر drop-in بدل append على limits.conf
+# (الكتابة فوق ملف مملوك للسكريبت idempotent بطبيعتها)
+mkdir -p /etc/security/limits.d
+cat > /etc/security/limits.d/99-custom.conf << 'LIMITS'
+*    soft nofile 65536
+*    hard nofile 65536
+*    soft nproc  32768
+*    hard nproc  32768
+
+# الرمز * لا يشمل root — لا بد من ذكره صراحة
+root soft nofile 65536
+root hard nofile 65536
+root soft nproc  32768
+root hard nproc  32768
 LIMITS
-fi
+
+# pam_limits لا يُطبَّق على خدمات systemd — تحتاج drop-in خاصاً بها
+mkdir -p /etc/systemd/system.conf.d
+printf '[Manager]\nDefaultLimitNOFILE=65536\n' > /etc/systemd/system.conf.d/99-limits.conf
 
 # تحسين sysctl للشبكة
 cat > /etc/sysctl.d/99-custom.conf << 'SYSCTL'
@@ -348,10 +374,16 @@ echo "تم تثبيت وإعداد:"
 echo "  ✓ تحديث كامل للنظام"
 echo "  ✓ الأدوات الأساسية (curl, wget, git, vim, htop, tmux...)"
 echo "  ✓ Python 3 + pip + venv + حزم مفيدة"
-node --version &>/dev/null && echo "  ✓ Node.js $(node --version) + npm $(npm --version)" || echo "  ! Node.js لم يتم تثبيته (تحقق من الإنترنت)"
-docker --version &>/dev/null && echo "  ✓ Docker $(docker --version | awk '{print $3}' | tr -d ',')" || true
+if command -v node &>/dev/null; then
+    echo "  ✓ Node.js $(node --version) + npm $(npm --version)"
+else
+    echo "  ! Node.js لم يتم تثبيته (تحقق من الإنترنت)"
+fi
+if command -v docker &>/dev/null; then
+    echo "  ✓ Docker $(docker --version | awk '{print $3}' | tr -d ',')"
+fi
 echo "  ✓ Zsh + Oh My Zsh + plugins"
-echo "  ✓ Aliases مفيدة في ~/.bash_aliases"
+echo "  ✓ Aliases مفيدة في ~/.config/shell/aliases.sh"
 echo "  ✓ تحسين أداء النظام (sysctl, limits)"
 echo ""
 echo "ملاحظات مهمة:"
