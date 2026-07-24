@@ -2,7 +2,7 @@
 # System Setup Script for Kali Linux
 # Run with: sudo bash setup_system.sh
 
-set -e
+set -Eeuo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10,18 +10,46 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[✓]${NC} $1"; }
-info() { echo -e "${BLUE}[→]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-error() { echo -e "${RED}[✗]${NC} $1"; }
+log() { echo -e "${GREEN}[✓]${NC} ${1:-}"; }
+info() { echo -e "${BLUE}[→]${NC} ${1:-}"; }
+warn() { echo -e "${YELLOW}[!]${NC} ${1:-}"; }
+error() { echo -e "${RED}[✗]${NC} ${1:-}"; }
 
 if [ "$EUID" -ne 0 ]; then
     error "يرجى تشغيل السكريبت بصلاحيات root: sudo bash setup_system.sh"
     exit 1
 fi
 
+# سجل التنفيذ — نفضّل /var/log ونسقط إلى /tmp إن تعذّرت الكتابة
+LOG_FILE="/var/log/kali-setup-$(date +%F-%H%M%S).log"
+if ! touch "$LOG_FILE" 2>/dev/null; then
+    LOG_FILE="/tmp/kali-setup-$(date +%F-%H%M%S).log"
+    touch "$LOG_FILE"
+fi
+exec > >(tee -a "$LOG_FILE") 2>&1
+trap 'error "فشل التنفيذ عند السطر $LINENO — راجع السجل: $LOG_FILE"' ERR
+
+# كشف بيئة الحاوية: systemctl و sysctl لا يعملان داخلها، نتخطاهما بدل الفشل
+IN_CONTAINER=0
+if [ -f /run/.containerenv ] || [ -f /.dockerenv ] ||
+   { command -v systemd-detect-virt &>/dev/null && systemd-detect-virt -c &>/dev/null; }; then
+    IN_CONTAINER=1
+    info "تم كشف بيئة حاوية — سيتم تخطّي عمليات systemd و sysctl"
+fi
+
 ACTUAL_USER=${SUDO_USER:-$(logname 2>/dev/null || whoami)}
 ACTUAL_HOME=$(getent passwd "$ACTUAL_USER" | cut -d: -f6)
+
+if [ "$ACTUAL_USER" = "root" ]; then
+    warn "شُغّل السكريبت كـ root مباشرة — إعدادات المستخدم ستُطبّق على /root"
+fi
+
+# getent قد يرجع قيمة فارغة؛ بدون هذا الفحص تتحوّل المسارات إلى /.zshrc وما شابه
+if [ -z "$ACTUAL_HOME" ] || [ ! -d "$ACTUAL_HOME" ]; then
+    error "تعذّر تحديد مجلد المنزل للمستخدم $ACTUAL_USER"
+    exit 1
+fi
+ACTUAL_GROUP=$(id -gn "$ACTUAL_USER")
 
 echo ""
 echo "=================================================="
@@ -111,9 +139,12 @@ log "تم تثبيت Python وأدواته"
 # ─── 4. Node.js ───────────────────────────────────
 info "تثبيت Node.js..."
 if ! command -v node &>/dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - 2>/dev/null
-    apt-get install -y nodejs
-    log "تم تثبيت Node.js $(node --version) و npm $(npm --version)"
+    if curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -; then
+        apt-get install -y nodejs
+        log "تم تثبيت Node.js $(node --version) و npm $(npm --version)"
+    else
+        warn "تعذّر إعداد مستودع NodeSource — تخطّي Node.js"
+    fi
 else
     log "Node.js مثبت مسبقاً: $(node --version)"
 fi
@@ -122,14 +153,17 @@ fi
 info "تثبيت Docker..."
 if ! command -v docker &>/dev/null; then
     apt-get install -y docker.io docker-compose
-    systemctl enable docker
-    systemctl start docker
-    usermod -aG docker "$ACTUAL_USER"
-    log "تم تثبيت Docker وإضافة المستخدم لمجموعته"
+    if [ "$IN_CONTAINER" -eq 1 ]; then
+        info "داخل حاوية — تخطّي تفعيل خدمة docker"
+    else
+        systemctl enable docker
+        systemctl start docker
+    fi
+    log "تم تثبيت Docker"
 else
     log "Docker مثبت مسبقاً"
-    usermod -aG docker "$ACTUAL_USER" 2>/dev/null
 fi
+usermod -aG docker "$ACTUAL_USER" || warn "تعذّر إضافة $ACTUAL_USER إلى مجموعة docker"
 
 # ─── 6. Git Configuration ─────────────────────────
 info "إعداد Git..."
@@ -233,7 +267,7 @@ alias meminfo='free -h'
 alias cpuinfo='lscpu | head -20'
 ALIASES
 
-chown "$ACTUAL_USER:$ACTUAL_USER" "$ALIASES_FILE"
+chown "$ACTUAL_USER:$ACTUAL_GROUP" "$ALIASES_FILE"
 
 # تأكد من تحميل aliases في bashrc
 if [ -f "$ACTUAL_HOME/.bashrc" ] && ! grep -q ".bash_aliases" "$ACTUAL_HOME/.bashrc"; then
@@ -274,7 +308,11 @@ vm.dirty_ratio = 15
 vm.dirty_background_ratio = 5
 SYSCTL
 
-sysctl -p /etc/sysctl.d/99-custom.conf 2>/dev/null || true
+if [ "$IN_CONTAINER" -eq 1 ]; then
+    info "داخل حاوية — تخطّي تطبيق sysctl (/proc/sys للقراءة فقط)"
+else
+    sysctl -p /etc/sysctl.d/99-custom.conf >/dev/null || warn "تعذّر تطبيق بعض قيم sysctl"
+fi
 log "تم تحسين إعدادات النظام"
 
 # ─── 10. تنظيف ───────────────────────────────────
