@@ -55,6 +55,26 @@ if [ -z "$ACTUAL_HOME" ] || [ ! -d "$ACTUAL_HOME" ]; then
 fi
 ACTUAL_GROUP=$(id -gn "$ACTUAL_USER")
 
+# apt-get install بقائمة طويلة يفشل بالكامل لو حزمة واحدة مفقودة، فلا يُثبَّت شيء.
+# نفحص التوفر أولاً، نثبّت المتاح دفعة واحدة، ونسمّي المفقود صراحة.
+install_available() {
+    local available=() missing=() pkg
+    for pkg in "$@"; do
+        if apt-cache show "$pkg" &>/dev/null; then
+            available+=("$pkg")
+        else
+            missing+=("$pkg")
+        fi
+    done
+    # ملاحظة: (( 0 )) ترجع حالة 1 وتُسقط السكريبت تحت set -e، لذا if لا &&
+    if ((${#available[@]})); then
+        apt-get install -y "${available[@]}"
+    fi
+    if ((${#missing[@]})); then
+        warn "حزم غير متاحة في المستودع: ${missing[*]}"
+    fi
+}
+
 echo ""
 echo "=================================================="
 echo "   إعداد نظام Kali Linux - بدء التثبيت"
@@ -74,57 +94,22 @@ log "تم ترقية الحزم"
 
 # ─── 2. الأدوات الأساسية ──────────────────────────
 info "تثبيت الأدوات الأساسية..."
-apt-get install -y \
-    build-essential \
-    curl \
-    wget \
-    git \
-    vim \
-    nano \
-    htop \
-    btop \
-    tree \
-    unzip \
-    zip \
-    p7zip-full \
-    net-tools \
-    dnsutils \
-    whois \
-    traceroute \
-    nmap \
-    tcpdump \
-    openssl \
-    ca-certificates \
-    apt-transport-https \
-    software-properties-common \
-    gnupg \
-    lsb-release \
-    jq \
-    tmux \
-    screen \
-    neofetch \
-    locate \
-    bash-completion \
-    man-db \
-    tldr \
-    bat \
-    fd-find \
-    ripgrep \
-    fzf \
-    2>/dev/null || warn "بعض الأدوات قد لا تكون متاحة"
+# fastfetch بدل neofetch (المشروع مؤرشف وأُزيل من مستودعات Debian/Kali)
+# plocate بدل locate، و sudo لأن السكريبت يعتمد عليه في إعدادات المستخدم
+CORE_PKGS=(build-essential curl wget git vim nano htop btop tree unzip zip
+           p7zip-full net-tools dnsutils whois traceroute nmap tcpdump openssl
+           ca-certificates apt-transport-https gnupg lsb-release jq tmux screen
+           fastfetch plocate bash-completion man-db tldr bat fd-find ripgrep fzf
+           sudo)
+install_available "${CORE_PKGS[@]}"
 
 log "تم تثبيت الأدوات الأساسية"
 
 # ─── 3. Python ────────────────────────────────────
 info "تثبيت أدوات Python..."
-apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev \
-    python3-setuptools \
-    python3-wheel \
-    ipython3
+PYTHON_PKGS=(python3 python3-pip python3-venv python3-dev python3-setuptools
+             python3-wheel ipython3)
+install_available "${PYTHON_PKGS[@]}"
 
 # تثبيت حزم Python المفيدة
 pip3 install --break-system-packages \
@@ -158,7 +143,7 @@ fi
 # ─── 5. Docker ────────────────────────────────────
 info "تثبيت Docker..."
 if ! command -v docker &>/dev/null; then
-    apt-get install -y docker.io docker-compose
+    install_available docker.io docker-compose
     if [ "$IN_CONTAINER" -eq 1 ]; then
         info "داخل حاوية — تخطّي تفعيل خدمة docker"
     else
@@ -184,7 +169,7 @@ fi
 
 # ─── 7. Zsh + Oh My Zsh ──────────────────────────
 info "تثبيت Zsh..."
-apt-get install -y zsh
+install_available zsh
 if [ ! -d "$ACTUAL_HOME/.oh-my-zsh" ]; then
     sudo -u "$ACTUAL_USER" sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>/dev/null
     log "تم تثبيت Oh My Zsh"
@@ -329,7 +314,14 @@ log "تم التنظيف"
 
 # ─── تحديث قاعدة بيانات locate ───────────────────
 info "تحديث قاعدة بيانات البحث..."
-updatedb 2>/dev/null || true
+# plocate يوفّر updatedb.plocate؛ نقبل أياً منهما ولا نفشل إن غاب الاثنان
+if command -v updatedb.plocate &>/dev/null; then
+    updatedb.plocate || true
+elif command -v updatedb &>/dev/null; then
+    updatedb || true
+else
+    info "أداة updatedb غير متوفرة — تخطّي"
+fi
 
 # ─── ملخص ─────────────────────────────────────────
 echo ""
