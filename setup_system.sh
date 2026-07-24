@@ -299,7 +299,10 @@ cat > /etc/sysctl.d/99-custom.conf << 'SYSCTL'
 # تحسين الشبكة
 net.core.somaxconn = 65535
 net.ipv4.tcp_max_syn_backlog = 65535
-net.ipv4.ip_local_port_range = 1024 65535
+# لا تنزل بالحد الأدنى تحت 32768: النواة تحجز المدى كمنافذ ephemeral،
+# وأي مدى يبدأ من 1024 يبتلع منافذ خدمات مثل 3306 و 5432 و 8080
+# فتظهر أخطاء Address already in use متقطعة مع Docker و PostgreSQL
+net.ipv4.ip_local_port_range = 32768 60999
 net.ipv4.tcp_fin_timeout = 15
 
 # تحسين الذاكرة
