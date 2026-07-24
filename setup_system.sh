@@ -111,19 +111,22 @@ PYTHON_PKGS=(python3 python3-pip python3-venv python3-dev python3-setuptools
              python3-wheel ipython3)
 install_available "${PYTHON_PKGS[@]}"
 
-# تثبيت حزم Python المفيدة
-pip3 install --break-system-packages \
-    requests \
-    httpx \
-    rich \
-    typer \
-    black \
-    flake8 \
-    ipython \
-    jupyter \
-    pandas \
-    numpy \
-    2>/dev/null || warn "بعض حزم Python قد لا تكون مثبتة"
+# المكتبات من apt احتراماً لـ PEP 668: الكتابة فوق حزم مُدارة بـ apt
+# تكسر أدوات Kali المبنية على Python
+PYTHON_LIBS=(python3-requests python3-httpx python3-rich python3-typer
+             python3-pandas python3-numpy)
+install_available "${PYTHON_LIBS[@]}"
+
+# التطبيقات المستقلة عبر pipx، كل واحد في حلقة مستقلة حتى لا يوقف فشلُ واحدٍ الباقي
+install_available pipx
+if command -v pipx &>/dev/null; then
+    sudo -u "$ACTUAL_USER" -H pipx ensurepath >/dev/null || warn "تعذّر ضبط PATH لـ pipx"
+    for app in black flake8 jupyterlab httpie; do
+        sudo -u "$ACTUAL_USER" -H pipx install "$app" || warn "تعذّر تثبيت $app عبر pipx"
+    done
+else
+    warn "pipx غير متاح — تخطّي تثبيت أدوات Python المستقلة"
+fi
 
 log "تم تثبيت Python وأدواته"
 
