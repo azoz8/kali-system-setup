@@ -4,6 +4,8 @@
 
 set -Eeuo pipefail
 
+VERSION="1.1.0"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,6 +16,27 @@ log() { echo -e "${GREEN}[✓]${NC} ${1:-}"; }
 info() { echo -e "${BLUE}[→]${NC} ${1:-}"; }
 warn() { echo -e "${YELLOW}[!]${NC} ${1:-}"; }
 error() { echo -e "${RED}[✗]${NC} ${1:-}"; }
+
+usage() {
+    cat << USAGE
+kali-system-setup v$VERSION
+
+الاستخدام: sudo bash setup_system.sh [خيار]
+
+الخيارات:
+  -V, --version   طباعة رقم الإصدار والخروج
+  -h, --help      طباعة هذه المساعدة والخروج
+USAGE
+}
+
+# معالجة الخيارات قبل فحص root حتى يعمل --version بدون صلاحيات
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -V|--version) echo "kali-system-setup v$VERSION"; exit 0 ;;
+        -h|--help)    usage; exit 0 ;;
+        *)            error "خيار غير معروف: $1"; usage; exit 1 ;;
+    esac
+done
 
 if [ "$EUID" -ne 0 ]; then
     error "يرجى تشغيل السكريبت بصلاحيات root: sudo bash setup_system.sh"
