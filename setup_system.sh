@@ -20,6 +20,10 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# تشغيل غير تفاعلي: بدونه يتوقف السكريبت على حوارات conffile أو needrestart
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+
 # سجل التنفيذ — نفضّل /var/log ونسقط إلى /tmp إن تعذّرت الكتابة
 LOG_FILE="/var/log/kali-setup-$(date +%F-%H%M%S).log"
 if ! touch "$LOG_FILE" 2>/dev/null; then
@@ -63,7 +67,9 @@ apt-get update -y
 log "تم تحديث قوائم الحزم"
 
 info "ترقية الحزم المثبتة..."
-apt-get upgrade -y
+# full-upgrade ضروري على توزيعة rolling: upgrade يترك حزماً معلّقة (held back)
+apt-get -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold" full-upgrade -y
 log "تم ترقية الحزم"
 
 # ─── 2. الأدوات الأساسية ──────────────────────────
