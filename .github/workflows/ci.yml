@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: تحليل ساكن (shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تثبيت shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: فحص بناء الجملة
+        run: bash -n setup_system.sh
+
+      - name: shellcheck
+        run: shellcheck -x setup_system.sh
+
+  smoke:
+    name: تشغيل فعلي داخل حاوية Kali
+    runs-on: ubuntu-latest
+    container:
+      image: kalilinux/kali-rolling
+    steps:
+      # git مطلوب قبل actions/checkout، وهو غير مثبت في الصورة الأساسية
+      - name: تجهيز أدوات الفحص
+        run: |
+          apt-get update
+          apt-get install -y git ca-certificates
+
+      - uses: actions/checkout@v4
+
+      - name: التحقق من --version
+        run: bash setup_system.sh --version
+
+      - name: التشغيل الأول
+        run: bash setup_system.sh
+
+      - name: التحقق من الثنائيات
+        run: |
+          missing=0
+          for bin in git docker node zsh fastfetch batcat fdfind rg fzf; do
+              if ! command -v "$bin" >/dev/null 2>&1; then
+                  echo "مفقود: $bin"
+                  missing=1
+              fi
+          done
+          exit "$missing"
+
+      - name: التحقق من ملفات الإعداد
+        run: |
+          test -f /etc/sysctl.d/99-custom.conf
+          test -f /etc/security/limits.d/99-custom.conf
+          test -f /root/.config/shell/aliases.sh
+          grep -qF "ip_local_port_range = 32768 60999" /etc/sysctl.d/99-custom.conf
+          grep -qF "alias bat='batcat'" /root/.config/shell/aliases.sh
+
+      # التشغيلة الثانية هي اختبار الـ idempotency الفعلي
+      - name: التشغيل الثاني (idempotency)
+        run: bash setup_system.sh
+
+      - name: التأكد من عدم تكرار سطر تحميل الـ aliases
+        run: |
+          count=$(grep -cF '.config/shell/aliases.sh' /root/.bashrc)
+          test "$count" -eq 1
