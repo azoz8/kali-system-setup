@@ -45,6 +45,10 @@ sudo bash setup_system.sh
 
 للاطلاع على الإصدارات المتاحة: `git tag -l` أو [صفحة الإصدارات](https://github.com/azoz8/kali-system-setup/releases).
 
+وسوم الإصدارات موقّعة. تحقّق من أصالة الإصدار عبر شارة **Verified** بجانب اسم الوسم في
+[صفحة الإصدار](https://github.com/azoz8/kali-system-setup/releases/tag/v1.1.0) —
+وللتحقق محلياً راجع [التحقق من الإصدار](#verify-release).
+
 > ⚠️ **مهم:** يحتاج السكريبت صلاحيات `root`. سيخرج فوراً إن لم يُشغَّل بـ `sudo`.
 
 ### الخيارات
@@ -255,6 +259,49 @@ dex   # docker exec -it
 ├── CHANGELOG.md          # سجل التغييرات
 └── LICENSE               # رخصة MIT
 ```
+
+---
+
+<a id="verify-release"></a>
+
+## 🔏 التحقق من الإصدار
+
+وسوم الإصدارات موقّعة بمفتاح SSH. أسهل تحقق هو شارة **Verified** الظاهرة بجانب اسم الوسم في
+[صفحة الإصدار](https://github.com/azoz8/kali-system-setup/releases/tag/v1.1.0) — تعرضها GitHub
+بعد تحققها من التوقيع مقابل مفتاح التوقيع المسجَّل في الحساب.
+
+<details dir="rtl">
+<summary><b>التحقق محلياً (اختياري)</b></summary>
+
+توقيع SSH لا يُتحقَّق منه تلقائياً كما في GPG — يحتاج git ملف `allowed_signers` يربط الإيميل
+بالمفتاح العام. أنشئه مرة واحدة:
+
+```bash
+mkdir -p ~/.config/git
+cat >> ~/.config/git/allowed_signers << 'EOF'
+89449717+azoz8@users.noreply.github.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEeU5xn/PDeFxbUJWDa5llDDaSmkxNUAZy8UfDu5du0n
+EOF
+
+git config --global gpg.ssh.allowedSignersFile ~/.config/git/allowed_signers
+```
+
+ثم من داخل المستودع:
+
+```bash
+git tag -v v1.1.0
+```
+
+المخرج المتوقع:
+
+```
+Good "git" signature for 89449717+azoz8@users.noreply.github.com
+with ED25519 key SHA256:/cjNjTa26PCApqMvBOdaQVHPFEOJH5n+AlK6nMcfzec
+```
+
+المفتاح العام نفسه متاح للمقارنة من مصدر مستقل:
+`https://api.github.com/users/azoz8/ssh_signing_keys`
+
+</details>
 
 ---
 
