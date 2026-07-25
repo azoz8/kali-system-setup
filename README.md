@@ -32,25 +32,18 @@
 
 ## 🚀 التشغيل السريع
 
-### الطريقة 1: من الملف المضغوط
-
 ```bash
-# نزّل وفك الضغط
-wget https://github.com/azoz8/kali-system-setup/releases/download/v1.0.0/system-setup.tar.xz
-tar -xf system-setup.tar.xz
-cd system-setup
+git clone https://github.com/azoz8/kali-system-setup.git
+cd kali-system-setup
+
+# ثبّت نفسك على إصدار محدد بدل تتبّع main
+git checkout v1.1.0
 
 # شغّل بصلاحيات root
 sudo bash setup_system.sh
 ```
 
-### الطريقة 2: استنساخ المستودع
-
-```bash
-git clone https://github.com/azoz8/kali-system-setup.git
-cd kali-system-setup
-sudo bash setup_system.sh
-```
+للاطلاع على الإصدارات المتاحة: `git tag -l` أو [صفحة الإصدارات](https://github.com/azoz8/kali-system-setup/releases).
 
 > ⚠️ **مهم:** يحتاج السكريبت صلاحيات `root`. سيخرج فوراً إن لم يُشغَّل بـ `sudo`.
 
