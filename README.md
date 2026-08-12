@@ -11,7 +11,7 @@
 [![Kali](https://img.shields.io/badge/platform-Kali%20Linux-557C94?logo=kalilinux&logoColor=white)](https://www.kali.org/)
 [![Idempotent](https://img.shields.io/badge/idempotent-yes-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/azoz8/kali-system-setup?color=blue&label=إصدار)](https://github.com/azoz8/kali-system-setup/releases) [![Last Commit](https://img.shields.io/github/last-commit/azoz8/kali-system-setup?color=green)](https://github.com/azoz8/kali-system-setup/commits/main)
+[![Release](https://img.shields.io/github/v/release/ABDUAZIZX/kali-system-setup?color=blue&label=إصدار)](https://github.com/ABDUAZIZX/kali-system-setup/releases) [![Last Commit](https://img.shields.io/github/last-commit/ABDUAZIZX/kali-system-setup?color=green)](https://github.com/ABDUAZIZX/kali-system-setup/commits/main)
 
 </div>
 
@@ -33,7 +33,7 @@
 ## 🚀 التشغيل السريع
 
 ```bash
-git clone https://github.com/azoz8/kali-system-setup.git
+git clone https://github.com/ABDUAZIZX/kali-system-setup.git
 cd kali-system-setup
 
 # ثبّت نفسك على إصدار محدد بدل تتبّع main
@@ -43,10 +43,10 @@ git checkout v1.1.0
 sudo bash setup_system.sh
 ```
 
-للاطلاع على الإصدارات المتاحة: `git tag -l` أو [صفحة الإصدارات](https://github.com/azoz8/kali-system-setup/releases).
+للاطلاع على الإصدارات المتاحة: `git tag -l` أو [صفحة الإصدارات](https://github.com/ABDUAZIZX/kali-system-setup/releases).
 
 وسوم الإصدارات موقّعة. تحقّق من أصالة الإصدار عبر شارة **Verified** بجانب اسم الوسم في
-[صفحة الإصدار](https://github.com/azoz8/kali-system-setup/releases/tag/v1.1.0) —
+[صفحة الإصدار](https://github.com/ABDUAZIZX/kali-system-setup/releases/tag/v1.1.0) —
 وللتحقق محلياً راجع [التحقق من الإصدار](#verify-release).
 
 > ⚠️ **مهم:** يحتاج السكريبت صلاحيات `root`. سيخرج فوراً إن لم يُشغَّل بـ `sudo`.
@@ -267,7 +267,7 @@ dex   # docker exec -it
 ## 🔏 التحقق من الإصدار
 
 وسوم الإصدارات موقّعة بمفتاح SSH. أسهل تحقق هو شارة **Verified** الظاهرة بجانب اسم الوسم في
-[صفحة الإصدار](https://github.com/azoz8/kali-system-setup/releases/tag/v1.1.0) — تعرضها GitHub
+[صفحة الإصدار](https://github.com/ABDUAZIZX/kali-system-setup/releases/tag/v1.1.0) — تعرضها GitHub
 بعد تحققها من التوقيع مقابل مفتاح التوقيع المسجَّل في الحساب.
 
 <details dir="rtl">
@@ -279,7 +279,7 @@ dex   # docker exec -it
 ```bash
 mkdir -p ~/.config/git
 cat >> ~/.config/git/allowed_signers << 'EOF'
-89449717+azoz8@users.noreply.github.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEeU5xn/PDeFxbUJWDa5llDDaSmkxNUAZy8UfDu5du0n
+89449717+ABDUAZIZX@users.noreply.github.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEeU5xn/PDeFxbUJWDa5llDDaSmkxNUAZy8UfDu5du0n
 EOF
 
 git config --global gpg.ssh.allowedSignersFile ~/.config/git/allowed_signers
@@ -294,12 +294,12 @@ git tag -v v1.1.0
 المخرج المتوقع:
 
 ```
-Good "git" signature for 89449717+azoz8@users.noreply.github.com
+Good "git" signature for 89449717+ABDUAZIZX@users.noreply.github.com
 with ED25519 key SHA256:/cjNjTa26PCApqMvBOdaQVHPFEOJH5n+AlK6nMcfzec
 ```
 
 المفتاح العام نفسه متاح للمقارنة من مصدر مستقل:
-`https://api.github.com/users/azoz8/ssh_signing_keys`
+`https://api.github.com/users/ABDUAZIZX/ssh_signing_keys`
 
 </details>
 
